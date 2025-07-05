@@ -65,32 +65,33 @@
 
    
   function fetchResult() {
-    const input = document.getElementById("rollInput").value.trim().toLowerCase();
-    const output = document.getElementById("resultTable");
-    output.innerHTML = "Loading...";
+  const input = document.getElementById("rollInput").value.trim().toLowerCase();
+  const output = document.getElementById("resultTable");
+  output.innerHTML = "Loading...";
 
-    firebase.database().ref("Result").once("value").then(snapshot => {
-      const data = snapshot.val();
-      if (!data) {
-        output.innerHTML = "<p style='color:red;'>No data found at /Result.</p>";
-        return;
-      }
+  firebase.database().ref("Result").once("value").then(snapshot => {
+    const data = snapshot.val();
+    console.log("Fetched Data from Firebase:", data);
 
-      // Filter based on Regn No (key), Student Name, or Roll No
-      const matched = Object.entries(data).filter(([regnKey, record]) => {
-        const studentName = (record["Student Name"] || "").toLowerCase();
-        const rollNo = (record["Roll No"] || "").toLowerCase();
-        return (
-          regnKey.toLowerCase().includes(input) ||
-          studentName.includes(input) ||
-          rollNo.includes(input)
-        );
-      });
+    if (!data) {
+      output.innerHTML = "<p style='color:red;'>No data found at /Result.</p>";
+      return;
+    }
 
-      if (matched.length === 0) {
-        output.innerHTML = `<p>No match found for "<strong>${input}</strong>".</p>`;
-        return;
-      }
+    const matched = Object.entries(data).filter(([regnKey, record]) => {
+      const studentName = (record["Student Name"] || "").toLowerCase();
+      const rollNo = (record["Roll No"] || "").toLowerCase();
+
+      const match = regnKey.toLowerCase().includes(input) ||
+                    studentName.includes(input) ||
+                    rollNo.includes(input);
+
+      // Log each record check
+      console.log(`Checking: ${regnKey} | Roll: ${rollNo} | Name: ${studentName} => Match: ${match}`);
+      return match;
+    });
+
+    console.log("Matched Entries:", matched);
 
       // Generate table
       const allColumns = new Set(["Regn No"]);
