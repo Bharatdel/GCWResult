@@ -45,69 +45,101 @@
     <button onclick="fetchResult()">Get Result</button>
   </div>
 
-  <div id="resultTable"></div>
+ <div id="resultTable" style="margin-top: 2rem;"></div>
 
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyDV9ASRzlNYcOmo6zYNo5_f-svsCJljqbA",
-      authDomain: "gcwresult.firebaseapp.com",
-      databaseURL: "https://gcwresult-default-rtdb.asia-southeast1.firebasedatabase.app",
-      projectId: "gcwresult"
-    };
+ 
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyDV9ASRzlNYcOmo6zYNo5_f-svsCJljqbA",
+    authDomain: "gcwresult.firebaseapp.com",
+    databaseURL: "https://gcwresult-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "gcwresult"
+  };
 
-    let allData = {};
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
 
-    window.onload = function () {
-      db.ref("Result").once("value").then(snapshot => {
-        allData = snapshot.val() || {};
-        const dropdown = document.getElementById("regnDropdown");
-        Object.keys(allData).sort().forEach(regn => {
-          const opt = document.createElement("option");
-          opt.value = regn;
-          opt.textContent = regn;
-          dropdown.appendChild(opt);
-        });
-      });
-    };
+  let allResults = {};
+  let allPersonal = {};
 
-    function fetchResult() {
-      const regn = document.getElementById("regnDropdown").value;
-      const output = document.getElementById("resultTable");
-      output.innerHTML = "";
+  // Populate dropdown on page load
+  window.onload = async function () {
+    const [resultSnap, personalSnap] = await Promise.all([
+      db.ref("Result").once("value"),
+      db.ref("Regn_Data").once("value")
+    ]);
 
-      if (!regn || !allData[regn]) {
-        output.innerHTML = "<p style='color:red;'>Please select a valid registration number.</p>";
-        return;
-      }
+    allResults = resultSnap.val() || {};
+    allPersonal = personalSnap.val() || {};
 
-      const record = allData[regn];
+    const dropdown = document.getElementById("regnDropdown");
+    Object.keys(allResults).sort().forEach(regn => {
+      const opt = document.createElement("option");
+      opt.value = regn;
+      opt.textContent = regn;
+      dropdown.appendChild(opt);
+    });
+  };
 
-      // Desired starting order
-      const fixedOrder = ["Semester", "Result Status", "Roll No", "Student Name"];
-      const dynamicFields = Object.keys(record)
-        .filter(key => !fixedOrder.includes(key) && record[key] !== "")
-        .sort();
+  function fetchResult() {
+    const regn = document.getElementById("regnDropdown").value;
+    const output = document.getElementById("resultTable");
+    output.innerHTML = "";
 
-      const finalCols = fixedOrder.filter(k => record[k] !== "").concat(dynamicFields);
+    const resultData = allResults[regn];
+    const personalData = allPersonal[regn];
 
-      let html = "<table><thead><tr><th>Regn No</th>";
-      finalCols.forEach(col => html += `<th>${col}</th>`);
-      html += "</tr></thead><tbody><tr><td>" + regn + "</td>";
-
-      finalCols.forEach(col => {
-        html += `<td>${record[col] || ""}</td>`;
-      });
-
-      html += "</tr></tbody></table>";
-      output.innerHTML = html;
+    if (!regn || !resultData) {
+      output.innerHTML = "<p style='color:red;'>Please select a valid registration number.</p>";
+      return;
     }
-  </script>
+
+    // Personal detail column order
+    const personalFields = [
+      "Regn No", "Student Name", "Fathers Name", "Mothers Name", "Date of Birth",
+      "Gender", "Category", "Previous Board", "Passout Year",
+      "Previous Exam Roll No", "Previous Exam Total Mark", "Previous Exam Obtained Mark",
+      "Student Email Id", "Student Mobile No"
+    ];
+
+    // Academic detail fixed order
+    const fixedAcademic = ["Semester", "Result Status", "Roll No", "Student Name"];
+    const dynamicFields = Object.keys(resultData)
+      .filter(key => !fixedAcademic.includes(key) && resultData[key] !== "")
+      .sort();
+
+    const finalAcademicCols = fixedAcademic.filter(k => resultData[k] !== "").concat(dynamicFields);
+
+    // 🔷 Personal Info Table
+    let html = "<h2>Student Personal Details</h2>";
+    html += "<table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody>";
+
+    personalFields.forEach(key => {
+      const val = personalData?.[key] || "";
+      html += `<tr><td>${key}</td><td>${val}</td></tr>`;
+    });
+
+    html += "</tbody></table><br>";
+
+    // 🔶 Academic Info Table
+    html += "<h2>Academic Result</h2><table><thead><tr><th>Regn No</th>";
+    finalAcademicCols.forEach(col => html += `<th>${col}</th>`);
+    html += "</tr></thead><tbody><tr><td>" + regn + "</td>";
+
+    finalAcademicCols.forEach(col => {
+      html += `<td>${resultData[col] || ""}</td>`;
+    });
+
+    html += "</tr></tbody></table>";
+
+    output.innerHTML = html;
+  }
+</script>
+
 </body>
 </html>
