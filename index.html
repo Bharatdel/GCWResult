@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Student Result Lookup - GCW Karnal</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 2rem;
+      background: #f2f7fa;
+    }
+    h1, h2 {
+      text-align: center;
+      color: #004080;
+    }
+    input, select, button {
+      font-size: 1rem;
+      padding: 0.6rem;
+      margin: 0.4rem;
+    }
+    table {
+      margin-top: 2rem;
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 0.5rem;
+      text-align: center;
+    }
+    th {
+      background: #dbeaff;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>GCW KARNAL</h1>
+  <h2>Student Result Lookup (BCA 1st Sem)</h2>
+
+  <div style="text-align:center;">
+    <input type="text" id="rollInput" placeholder="Enter Roll No or Name" />
+    <button onclick="fetchResult()">Get Result</button>
+  </div>
+
+  <div id="resultTable"></div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
+  <script>
+   const firebaseConfig = {
+  apiKey: "AIzaSyBaG_jYI-i_L_wewADoA23Tlh_I_GhhLcA",
+  authDomain: "gcwresult.firebaseapp.com",
+  projectId: "gcwresult",
+  storageBucket: "gcwresult.firebasestorage.app",
+  messagingSenderId: "5006578670",
+  appId: "1:5006578670:web:88cea5a4b1ae2c9b2274ff"
+};
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    function fetchResult() {
+      const input = document.getElementById("rollInput").value.trim().toLowerCase();
+      const output = document.getElementById("resultTable");
+      output.innerHTML = "Loading...";
+
+      db.ref("Results/BCA1_Pivoted").once("value").then(snapshot => {
+        const allData = snapshot.val();
+        const matched = allData.filter(row =>
+          row["Roll No"].toString().toLowerCase().includes(input) ||
+          row["Student Name"].toLowerCase().includes(input)
+        );
+
+        if (matched.length === 0) {
+          output.innerHTML = `<p>No matching result found for "<strong>${input}</strong>".</p>`;
+          return;
+        }
+
+        // Extract column names
+        const columns = Object.keys(matched[0]);
+        let html = `<table><thead><tr>`;
+        columns.forEach(col => {
+          html += `<th>${col}</th>`;
+        });
+        html += `</tr></thead><tbody>`;
+
+        matched.forEach(row => {
+          html += `<tr>`;
+          columns.forEach(col => {
+            html += `<td>${row[col] || ""}</td>`;
+          });
+          html += `</tr>`;
+        });
+
+        html += `</tbody></table>`;
+        output.innerHTML = html;
+      }).catch(err => {
+        output.innerHTML = `<p style="color:red;">Error fetching data: ${err.message}</p>`;
+      });
+    }
+  </script>
+</body>
+</html>
