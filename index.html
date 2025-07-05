@@ -63,45 +63,64 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    function fetchResult() {
-      const input = document.getElementById("rollInput").value.trim().toLowerCase();
-      const output = document.getElementById("resultTable");
-      output.innerHTML = "Loading...";
+   
+  function fetchResult() {
+    const input = document.getElementById("rollInput").value.trim().toLowerCase();
+    const output = document.getElementById("resultTable");
+    output.innerHTML = "Loading...";
 
-      db.ref("Results/BCA1_Pivoted").once("value").then(snapshot => {
-        const allData = snapshot.val();
-        const matched = allData.filter(row =>
-          row["Roll No"].toString().toLowerCase().includes(input) ||
-          row["Student Name"].toLowerCase().includes(input)
+    firebase.database().ref("Result").once("value").then(snapshot => {
+      const data = snapshot.val();
+      if (!data) {
+        output.innerHTML = "<p style='color:red;'>No data found at /Result.</p>";
+        return;
+      }
+
+      // Filter based on Regn No (key), Student Name, or Roll No
+      const matched = Object.entries(data).filter(([regnKey, record]) => {
+        const studentName = (record["Student Name"] || "").toLowerCase();
+        const rollNo = (record["Roll No"] || "").toLowerCase();
+        return (
+          regnKey.toLowerCase().includes(input) ||
+          studentName.includes(input) ||
+          rollNo.includes(input)
         );
-
-        if (matched.length === 0) {
-          output.innerHTML = `<p>No matching result found for "<strong>${input}</strong>".</p>`;
-          return;
-        }
-
-        // Extract column names
-        const columns = Object.keys(matched[0]);
-        let html = `<table><thead><tr>`;
-        columns.forEach(col => {
-          html += `<th>${col}</th>`;
-        });
-        html += `</tr></thead><tbody>`;
-
-        matched.forEach(row => {
-          html += `<tr>`;
-          columns.forEach(col => {
-            html += `<td>${row[col] || ""}</td>`;
-          });
-          html += `</tr>`;
-        });
-
-        html += `</tbody></table>`;
-        output.innerHTML = html;
-      }).catch(err => {
-        output.innerHTML = `<p style="color:red;">Error fetching data: ${err.message}</p>`;
       });
-    }
+
+      if (matched.length === 0) {
+        output.innerHTML = `<p>No match found for "<strong>${input}</strong>".</p>`;
+        return;
+      }
+
+      // Generate table
+      const allColumns = new Set(["Regn No"]);
+      matched.forEach(([_, row]) => Object.keys(row).forEach(col => allColumns.add(col)));
+
+      const columnList = [...allColumns];
+      let html = `<table><thead><tr>`;
+      columnList.forEach(col => html += `<th>${col}</th>`);
+      html += "</tr></thead><tbody>";
+
+      matched.forEach(([regnKey, record]) => {
+        html += "<tr>";
+        columnList.forEach(col => {
+          if (col === "Regn No") {
+            html += `<td>${regnKey}</td>`;
+          } else {
+            html += `<td>${record[col] || ""}</td>`;
+          }
+        });
+        html += "</tr>";
+      });
+
+      html += "</tbody></table>";
+      output.innerHTML = html;
+    }).catch(err => {
+      output.innerHTML = `<p style="color:red;">Error: ${err.message}</p>`;
+    });
+  }
+
+
   </script>
 </body>
 </html>
