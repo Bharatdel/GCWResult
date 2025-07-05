@@ -80,12 +80,15 @@
     }
 
     const matched = Object.entries(data).filter(([regnKey, record]) => {
-      const studentName = (record["Student Name"] || "").toLowerCase();
-      const rollNo = (record["Roll No"] || "").toLowerCase();
+  const studentName = String(record["Student Name"] || "").toLowerCase();
+  const rollNo = String(record["Roll No"] || "").toLowerCase();
+  const regn = regnKey.toLowerCase();
 
-      const match = regnKey.toLowerCase().includes(input) ||
-                    studentName.includes(input) ||
-                    rollNo.includes(input);
+  return (
+    regn.includes(input) ||
+    studentName.includes(input) ||
+    rollNo.includes(input)
+
 
       // Log each record check
       console.log(`Checking: ${regnKey} | Roll: ${rollNo} | Name: ${studentName} => Match: ${match}`);
