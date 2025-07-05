@@ -2,27 +2,27 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Student Result Lookup - GCW Karnal</title>
+  <title>GCW Result Viewer</title>
   <style>
     body {
       font-family: Arial, sans-serif;
       padding: 2rem;
       background: #f2f7fa;
     }
-    h1, h2 {
+    h1 {
       text-align: center;
       color: #004080;
     }
-    input, select, button {
+    select, button {
       font-size: 1rem;
       padding: 0.6rem;
       margin: 0.4rem;
     }
     table {
-      margin-top: 2rem;
       width: 100%;
       border-collapse: collapse;
       background: white;
+      margin-top: 2rem;
     }
     th, td {
       border: 1px solid #ccc;
@@ -36,88 +36,78 @@
 </head>
 <body>
 
-  <h1>GCW KARNAL</h1>
-  <h2>Student Result Lookup (BCA 1st Sem)</h2>
+  <h1>GCW KARNAL — Result Viewer</h1>
 
   <div style="text-align:center;">
-    <input type="text" id="rollInput" placeholder="Enter Roll No or Name" />
+    <select id="regnDropdown">
+      <option value="">Select Registration No</option>
+    </select>
     <button onclick="fetchResult()">Get Result</button>
   </div>
 
   <div id="resultTable"></div>
 
-  <!-- Firebase SDK -->
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
 
   <script>
-  const firebaseConfig = {
-  apiKey: "AIzaSyDV9ASRzlNYcOmo6zYNo5_f-svsCJljqbA",
-  authDomain: "gcwresult.firebaseapp.com",
-  databaseURL: "https://gcwresult-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "gcwresult",
-  storageBucket: "gcwresult.appspot.com",
-  messagingSenderId: "5006578670",
-  appId: "1:5006578670:web:88cea5a4b1ae2c9b2274ff"
-};
+    const firebaseConfig = {
+      apiKey: "AIzaSyDV9ASRzlNYcOmo6zYNo5_f-svsCJljqbA",
+      authDomain: "gcwresult.firebaseapp.com",
+      databaseURL: "https://gcwresult-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "gcwresult"
+    };
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
+    let allData = {};
 
-  function fetchResult() {
-    const input = document.getElementById("rollInput").value.trim().toLowerCase();
-    const output = document.getElementById("resultTable");
-    output.innerHTML = "Loading...";
-
-    firebase.database().ref("Result").once("value").then(snapshot => {
-      const data = snapshot.val();
-      if (!data) {
-        output.innerHTML = "<p style='color:red;'>No data found at /Result.</p>";
-        return;
-      }
-
-      const matched = Object.entries(data).filter(([regnKey, record]) => {
-        const studentName = String(record["Student Name"] || "").toLowerCase();
-        const rollNo = String(record["Roll No"] || "").toLowerCase();
-        return (
-          regnKey.toLowerCase().includes(input) ||
-          studentName.includes(input) ||
-          rollNo.includes(input)
-        );
-      });
-
-      if (matched.length === 0) {
-        output.innerHTML = `<p>No match found for "<strong>${input}</strong>".</p>`;
-        return;
-      }
-
-      const allColumns = new Set(["Regn No"]);
-      matched.forEach(([_, row]) => Object.keys(row).forEach(col => allColumns.add(col)));
-
-      const columnList = [...allColumns];
-      let html = `<table><thead><tr>`;
-      columnList.forEach(col => html += `<th>${col}</th>`);
-      html += "</tr></thead><tbody>";
-
-      matched.forEach(([regnKey, record]) => {
-        html += "<tr>";
-        columnList.forEach(col => {
-          if (col === "Regn No") {
-            html += `<td>${regnKey}</td>`;
-          } else {
-            html += `<td>${record[col] || ""}</td>`;
-          }
+    window.onload = function () {
+      db.ref("Result").once("value").then(snapshot => {
+        allData = snapshot.val() || {};
+        const dropdown = document.getElementById("regnDropdown");
+        Object.keys(allData).sort().forEach(regn => {
+          const opt = document.createElement("option");
+          opt.value = regn;
+          opt.textContent = regn;
+          dropdown.appendChild(opt);
         });
-        html += "</tr>";
+      });
+    };
+
+    function fetchResult() {
+      const regn = document.getElementById("regnDropdown").value;
+      const output = document.getElementById("resultTable");
+      output.innerHTML = "";
+
+      if (!regn || !allData[regn]) {
+        output.innerHTML = "<p style='color:red;'>Please select a valid registration number.</p>";
+        return;
+      }
+
+      const record = allData[regn];
+
+      // Desired starting order
+      const fixedOrder = ["Semester", "Result Status", "Roll No", "Student Name"];
+      const dynamicFields = Object.keys(record)
+        .filter(key => !fixedOrder.includes(key) && record[key] !== "")
+        .sort();
+
+      const finalCols = fixedOrder.filter(k => record[k] !== "").concat(dynamicFields);
+
+      let html = "<table><thead><tr><th>Regn No</th>";
+      finalCols.forEach(col => html += `<th>${col}</th>`);
+      html += "</tr></thead><tbody><tr><td>" + regn + "</td>";
+
+      finalCols.forEach(col => {
+        html += `<td>${record[col] || ""}</td>`;
       });
 
-      html += "</tbody></table>";
+      html += "</tr></tbody></table>";
       output.innerHTML = html;
-    }).catch(err => {
-      output.innerHTML = `<p style="color:red;">Error: ${err.message}</p>`;
-    });
-  }
+    }
   </script>
 </body>
 </html>
