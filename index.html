@@ -46,6 +46,15 @@
   </div>
 
  <div id="resultTable" style="margin-top: 2rem;"></div>
+<hr><h2 style="text-align:center;">Category-wise Result Summary</h2>
+<div style="text-align:center;">
+  <select id="categoryDropdown">
+    <option value="">Select Category</option>
+  </select>
+  <button onclick="fetchCategoryResult()">Get Category Results</button>
+</div>
+
+<div id="categoryResultTable" style="margin-top: 2rem;"></div>
 
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
@@ -69,6 +78,8 @@
 
   // Populate dropdown on page load
   window.onload = async function () {
+    populateCategoryDropdown();
+
     const [resultSnap, personalSnap] = await Promise.all([
       db.ref("Result").once("value"),
       db.ref("Regn_Data").once("value")
@@ -137,6 +148,79 @@
 
     html += "</tr></tbody></table>";
 
+    output.innerHTML = html;
+  }
+</script>
+<script>
+  function populateCategoryDropdown() {
+    const categorySet = new Set();
+    Object.values(allPersonal).forEach(p => {
+      const cat = p?.["Category"]?.trim();
+      if (cat) categorySet.add(cat);
+    });
+
+    const dropdown = document.getElementById("categoryDropdown");
+    categorySet.forEach(cat => {
+      const opt = document.createElement("option");
+      opt.value = cat;
+      opt.textContent = cat;
+      dropdown.appendChild(opt);
+    });
+  }
+
+  function fetchCategoryResult() {
+    const category = document.getElementById("categoryDropdown").value;
+    const output = document.getElementById("categoryResultTable");
+    output.innerHTML = "";
+
+    if (!category) {
+      output.innerHTML = "<p style='color:red;'>Please select a category.</p>";
+      return;
+    }
+
+    let rows = [];
+    let passCount = 0;
+    let failCount = 0;
+
+    Object.entries(allResults).forEach(([regn, result]) => {
+      const person = allPersonal[regn];
+      const cat = person?.["Category"]?.trim();
+
+      if (cat === category) {
+        const status = (result?.["Result Status"] || "").toLowerCase();
+        const isPass = status.includes("pass");
+        if (isPass) passCount++; else failCount++;
+
+        rows.push({
+          Regn: regn,
+          Name: person?.["Student Name"] || "",
+          Category: cat,
+          RollNo: result?.["Roll No"] || "",
+          Result: result?.["Result Status"] || ""
+        });
+      }
+    });
+
+    if (rows.length === 0) {
+      output.innerHTML = `<p>No students found in category: <strong>${category}</strong></p>`;
+      return;
+    }
+
+    let html = `<p><strong>Total Students:</strong> ${rows.length} &nbsp;&nbsp; 
+                <strong>Passed:</strong> ${passCount} &nbsp;&nbsp; 
+                <strong>Failed:</strong> ${failCount}</p>`;
+
+    html += `<table><thead><tr>
+      <th>Regn No</th><th>Roll No</th><th>Student Name</th><th>Category</th><th>Result Status</th>
+    </tr></thead><tbody>`;
+
+    rows.forEach(r => {
+      const isFail = r.Result.toLowerCase().includes("fail") || r.Result.toLowerCase().includes("re-appear");
+      const style = isFail ? ' style="background-color:#ffcccc;font-weight:bold;"' : "";
+      html += `<tr${style}><td>${r.Regn}</td><td>${r.RollNo}</td><td>${r.Name}</td><td>${r.Category}</td><td>${r.Result}</td></tr>`;
+    });
+
+    html += "</tbody></table>";
     output.innerHTML = html;
   }
 </script>
